@@ -42,5 +42,6 @@ Thumbs.db
 
 # Java plugin build
 4_toImageJ/java/target/
-4_toImageJ/dist/
+4_toImageJ/dist/*
+!4_toImageJ/dist/Seg-LUT.jar
 4_toImageJ/java/src/main/resources/lut/*.npy
