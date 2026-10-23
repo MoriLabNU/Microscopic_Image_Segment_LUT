@@ -1,6 +1,0 @@
-# Copy to Fiji.app/plugins/Seg-LUT/config.txt and edit paths.
-# Environment variables PYTHON_EXE, SEG_LUT_SCRIPT, SEG_LUT_NPY override these.
-
-PYTHON_EXE=python
-SEG_LUT_SCRIPT=plugins/Seg-LUT/py_lut/segment_lut.py
-SEG_LUT_NPY=plugins/Seg-LUT/lut/Seg2_LUT_HV_2_4.npy

@@ -40,5 +40,7 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Fiji plugin local config (copy from config.example.txt)
-4_toImageJ/fiji/config.txt
+# Java plugin build
+4_toImageJ/java/target/
+4_toImageJ/dist/
+4_toImageJ/java/src/main/resources/lut/*.npy

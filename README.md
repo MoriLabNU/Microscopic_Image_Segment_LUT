@@ -2,19 +2,75 @@
 
 Lookup-table (LUT) accelerated image segmentation: train a small patch CNN, distill it into a 4D neighborhood LUT, and run fast inference in Python or Fiji/ImageJ.
 
-## Citation
+## Workflow
 
-If you use this code, please cite our paper:
+![SEG-LUT workflow: train SEG-CNN, build SEG-LUT, deploy on CPU / Fiji](docs/seg_lut_workflow.png)
 
-```bibtex
-@article{seglut_hv_tbd,
-  title   = {TBD},
-  author  = {TBD},
-  journal = {TBD},
-  year    = {TBD},
-  note    = {Replace this placeholder with the official BibTeX entry.}
-}
+| Panel | Step | What happens |
+|:-----:|------|----------------|
+| **(a)** | SEG-CNN training | A segmentation CNN is trained on the GPU (BCE loss vs. ground-truth masks). |
+| **(b)** | SEG-LUT building | The trained CNN is frozen; all relevant 4-neighborhood inputs are forwarded once and stored in a **look-up table** (LUT). |
+| **(c)** | Test & application | Inference uses **LUT lookup** on a CPU (no GPU)—including the **SEG-LUT** Fiji/ImageJ plugin in this repository. |
+
+This repo implements stages **(a)–(c)** as folders `1_Train_deep_model` → `2_Transfer_to_LUT` → `3_Test_using_LUT` / `4_toImageJ`.
+
+---
+
+## Fiji / ImageJ plugin — install in 3 steps
+
+**No Python required.** The LUT is already inside the JAR.
+
+| Step | What to do |
+|------|------------|
+| **1** | Get **`Seg-LUT.jar`** from [`4_toImageJ/dist/Seg-LUT.jar`](4_toImageJ/dist/Seg-LUT.jar) (or build it; see below). |
+| **2** | Copy the JAR into your Fiji **plugins** folder (create the folder if needed): |
+
+**Windows**
+
+```text
+C:\Fiji.app\plugins\Seg-LUT.jar
 ```
+
+**macOS**
+
+```text
+/Applications/Fiji.app/plugins/Seg-LUT.jar
+```
+
+**Linux**
+
+```text
+/path/to/Fiji.app/plugins/Seg-LUT.jar
+```
+
+| **3** | **Quit Fiji completely** and start it again. Open a grayscale (or RGB) image, then run **Plugins → Segmentation → SEG-LUT**. Accept the default probability threshold **0.50** unless you want to tune it. |
+
+If **SEG-LUT** does not appear, open **Plugins → Segmentation** (it is a **submenu**, not a top-level Plugins item). Check **Help → Show Log** after restart for errors. You can also use **Plugins → Install Plugin…** and select `Seg-LUT.jar`, then restart.
+
+### Example (same field of view in Fiji)
+
+Confocal-style input and segmentation masks produced in ImageJ (Otsu: **Image → Adjust → Threshold**, method Otsu; SEG-LUT: **Plugins → Segmentation → SEG-LUT**, threshold 0.50).
+
+| Original | Otsu (ImageJ) | SEG-LUT (ImageJ) |
+|:--------:|:-------------:|:----------------:|
+| ![Original input](4_toImageJ/docs/demo_original.png) | ![Otsu threshold](4_toImageJ/docs/demo_otsu.png) | ![SEG-LUT plugin](4_toImageJ/docs/demo_seg_lut.png) |
+
+### Rebuild the JAR after a new LUT
+
+Requires **JDK 8+** (`javac` on PATH, or let `package.ps1` auto-detect a JDK):
+
+```powershell
+cd 4_toImageJ\java
+.\package.ps1
+# Optional: point to a new .npy from Transfer_Model_Seg.py
+.\package.ps1 -LutPath "..\..\2_Transfer_to_LUT\Seg2_LUT_HV_2_4.npy"
+```
+
+Output: `4_toImageJ/dist/Seg-LUT.jar` — copy this file to `Fiji.app/plugins/` again.
+
+More detail: [`4_toImageJ/java/README.md`](4_toImageJ/java/README.md).
+
+---
 
 ## Overview
 
@@ -25,20 +81,20 @@ The repository is organized as a four-stage pipeline:
 | 1 | [`1_Train_deep_model/`](1_Train_deep_model/) | Train the segmentation CNN |
 | 2 | [`2_Transfer_to_LUT/`](2_Transfer_to_LUT/) | Enumerate 4D inputs and export a `.npy` LUT |
 | 3 | [`3_Test_using_LUT/`](3_Test_using_LUT/) | Batch evaluation with LUT + simplex interpolation |
-| 4 | [`4_toImageJ/`](4_toImageJ/) | Fiji plugin (Jython) calling a Python inference script |
+| 4 | [`4_toImageJ/`](4_toImageJ/) | Java Fiji plugin (`Seg-LUT.jar`) |
 
-Bundled LUT (for testing and the plugin):
+Bundled LUT for Python testing (also embedded in the JAR when you run `package.ps1`):
 
-- **File:** `3_Test_using_LUT/Seg2_LUT_HV_2_4.npy` (duplicate under `4_toImageJ/lut/`)
+- **File:** `3_Test_using_LUT/Seg2_LUT_HV_2_4.npy`
 - **`SAMPLING_INTERVAL`:** `4` (must match when exporting or loading the LUT)
 
 Classical baselines: `otsu.py` and `triangle.py` in stage 1.
 
 ## Requirements
 
-- Python 3.8+ (3.10 recommended)
+- Python 3.8+ (3.10 recommended) for training and LUT export
 - PyTorch with CUDA optional
-- [Fiji](https://fiji.sc/) for the ImageJ plugin (Jython + a separate CPython with NumPy)
+- [Fiji](https://fiji.sc/) for the plugin — **only the JAR**; no extra Python install for Fiji users
 
 Install Python dependencies:
 
@@ -102,34 +158,33 @@ python test_lut.py
 
 Settings: [`config.py`](3_Test_using_LUT/config.py). Predictions go to `output_Seg2_LUT_HV_2_test_<interval>bit/` (gitignored).
 
-### 4. Single-image CLI (also used by Fiji)
+After exporting a new LUT, rebuild `Seg-LUT.jar` (see Fiji section above) so Fiji uses the updated model.
 
-```bash
-python 4_toImageJ/py_lut/segment_lut.py \
-  --input path/to/image.png \
-  --output path/to/mask.png \
-  --lut 3_Test_using_LUT/Seg2_LUT_HV_2_4.npy \
-  --sampling-interval 4
+## Acknowledgments
+
+The train → LUT → test pipeline in this repository adapts the look-up table workflow from [SR-LUT](https://github.com/yhjo09/SR-LUT) (Jo & Kim, CVPR 2021). We thank the authors for making their code publicly available.
+
+## Citation
+
+If you use this code, please cite our paper:
+
+**Paper:** [A Deployable Microscopic Image Segmentation Look-Up Table Based on A Dilated CNN](https://link.springer.com/chapter/10.1007/978-3-031-77786-8_1) (MOVI 2024, LNCS vol. 15371)
+
+```bibtex
+@InProceedings{wu2025deployable,
+  author    = {Wu, Yunheng and Pan, Jiazhen and Kawamura, Shuntaro and Oda, Masahiro and Hayashi, Yuichiro and Takebe, Takanori and Rueckert, Daniel and Mori, Kensaku},
+  title     = {A Deployable Microscopic Image Segmentation Look-Up Table Based on A Dilated CNN},
+  booktitle = {Medical Optical Imaging and Virtual Microscopy Image Analysis},
+  series    = {Lecture Notes in Computer Science},
+  volume    = {15371},
+  pages     = {3--13},
+  year      = {2025},
+  publisher = {Springer},
+  address   = {Cham},
+  doi       = {10.1007/978-3-031-77786-8_1},
+  url       = {https://link.springer.com/chapter/10.1007/978-3-031-77786-8_1}
+}
 ```
-
-## Fiji / ImageJ plugin
-
-Fiji’s built-in Jython cannot load NumPy. The plugin saves the current image, runs **CPython** [`segment_lut.py`](4_toImageJ/py_lut/segment_lut.py), and opens the result.
-
-1. Install Fiji and a CPython environment with `numpy` and `Pillow`.
-2. Copy into `Fiji.app/plugins/Seg-LUT/`:
-   - [`4_toImageJ/fiji/Seg_LUT.py`](4_toImageJ/fiji/Seg_LUT.py) → `Seg_LUT.py`
-   - [`4_toImageJ/fiji/config.example.txt`](4_toImageJ/fiji/config.example.txt) → `config.txt` (edit paths)
-   - Folder [`4_toImageJ/py_lut/`](4_toImageJ/py_lut/) → `py_lut/`
-   - Folder [`4_toImageJ/lut/`](4_toImageJ/lut/) → `lut/`
-3. In Fiji: open a grayscale image, run **Seg_LUT** (under Plugins or Scripts, depending on install).
-4. Configure `PYTHON_EXE`, `SEG_LUT_SCRIPT`, and `SEG_LUT_NPY` in `config.txt`, or set environment variables with the same names.
-
-Default LUT path in the plugin: `plugins/Seg-LUT/lut/Seg2_LUT_HV_2_4.npy`.
-
-## Paper figures
-
-Scripts and plots for runtime vs. Dice comparisons live in [`docs/figures/`](docs/figures/).
 
 ## License
 
