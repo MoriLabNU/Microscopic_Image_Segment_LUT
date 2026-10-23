@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=0 python Train_Model_Seg.py

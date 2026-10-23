@@ -1,0 +1,11 @@
+numpy
+Pillow
+torch
+torchvision
+tqdm
+opencv-python
+scikit-learn
+tensorboardX
+matplotlib
+# Optional: set WANDB_MODE=disabled to skip Weights & Biases
+wandb

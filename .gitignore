@@ -1,0 +1,44 @@
+# Training artifacts
+1_Train_deep_model/checkpoint/
+1_Train_deep_model/wandb/
+1_Train_deep_model/logger/
+1_Train_deep_model/result/
+1_Train_deep_model/figure/
+1_Train_deep_model/log/
+
+**/logger/
+**/output_*/
+**/output_SEG_*/
+
+# Datasets (not distributed with this repository)
+train/
+val/
+test/
+**/train/
+**/val/
+**/test/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Model checkpoints (generate locally or use bundled LUT)
+*.pth
+
+# LUT files (only the release LUT is versioned)
+*.npy
+!3_Test_using_LUT/Seg2_LUT_HV_2_4.npy
+!4_toImageJ/lut/Seg2_LUT_HV_2_4.npy
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Fiji plugin local config (copy from config.example.txt)
+4_toImageJ/fiji/config.txt
